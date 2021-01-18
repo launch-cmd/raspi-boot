@@ -1,0 +1,133 @@
+{
+  "commands": [
+    {
+      "message": "Updating apt packages",
+      "command": "apt-get update"
+    },
+    {
+      "message": "Installing rsync",
+      "command": "apt-get install rsync -y"
+    },
+    {
+      "message": "Creating bootdevice filesystem folder",
+      "command": "mkdir -p /nfs/$CLIENT_HOSTNAME"
+    },
+    {
+      "message": "Copying bootdevice filesystem",
+      "command": "rsync -xa --progress --exclude /nfs / /nfs/$CLIENT_HOSTNAME"
+    },
+    {
+      "message": "Creating bootfiles folder",
+      "command": "mkdir -p /tftpboot"
+    },
+    {
+      "message": "Setting bootfiles permissions",
+      "command": "chmod 777 /tftpboot/"
+    },
+    {
+      "message": "Copying bootfiles",
+      "command": "cp -r /boot/* /tftpboot/"
+    },
+    {
+      "message": "Regenerating ssh keys",
+      "command": "rm /etc/ssh/ssh_host_* && dpkg-reconfigure openssh-server"
+    },
+    {
+      "message": "Installing nfs-kernel-server",
+      "command": "apt-get install nfs-kernel-server -y"
+    },
+    {
+      "message": "Adding nfs folder to exports",
+      "command": "echo '/nfs/$CLIENT_HOSTNAME *(rw,sync,no_subtree_check,no_root_squash)' | tee -a /etc/exports"
+    },
+    {
+      "message": "Adding tftp folder to exports",
+      "command": "echo '/tftpboot *(rw,sync,no_subtree_check,no_root_squash)' | tee -a /etc/exports"
+    },
+    {
+      "message": "Enabling nfs-kernel-server at boot",
+      "command": "systemctl enable nfs-kernel-server"
+    },
+    {
+      "message": "Modifying server dhcpcd settings",
+      "command": "echo 'interface eth0\nstatic ip_address=$SERVER_IP/30\nstatic routers=$SERVER_IP\nnogateway\n' | tee -a /etc/dhcpcd.conf"
+    },
+    {
+      "message": "Installing dnsmasq",
+      "command": "apt-get install dnsmasq -y"
+    },
+    {
+      "message": "Modifying dnsmasq settings",
+      "command": "echo 'except-interface=wlan0\ninterface=eth0\ndomain-needed\nbogus-priv\nno-poll\nno-resolv\nserver=8.8.8.8\nserver=1.1.1.1\ncache-size=1000\nenable-tftp\ntftp-root=/tftpboot\npxe-service=0, \"Raspberry Pi Boot\"\ndhcp-range=eth0, $CLIENT_IP, $CLIENT_IP, 24h\ndhcp-host=$CLIENT_MAC,$CLIENT_IP,$CLIENT_HOSTNAME\n' | tee -a /etc/dnsmasq.conf"
+    },
+    {
+      "message": "Enabling traffic forwarding",
+      "command": "echo 'net.ipv4.ip_forward = 1' | tee -a /etc/sysctl.conf"
+    },
+    {
+      "message": "Enabling dnsmasq at boot",
+      "command": "systemctl enable dnsmasq"
+    },
+    {
+      "message": "Modifying server host file",
+      "command": "echo '127.0.0.1\tlocalhost\n$SERVER_IP\t$SERVER_HOSTNAME\n$CLIENT_IP\t$CLIENT_HOSTNAME' | tee /etc/hosts"
+    },
+    {
+      "message": "Modifying client host file",
+      "command": "echo '127.0.0.1\tlocalhost' | tee /nfs/$CLIENT_HOSTNAME/etc/hosts"
+    },
+    {
+      "message": "Modifying server hostname",
+      "command": "echo '$SERVER_HOSTNAME' | tee /etc/hostname"
+    },
+    {
+      "message": "Modifying client hostname",
+      "command": "echo '$CLIENT_HOSTNAME' | tee /nfs/$CLIENT_HOSTNAME/etc/hostname"
+    },
+    {
+      "message": "Setting save ipv4 settings install flag for iptables-persistent",
+      "command": "echo 'iptables-persistent iptables-persistent/autosave_v4 boolean true' | debconf-set-selections"
+    },
+    {
+      "message": "Setting save ipv6 settings install flag for iptables-persistent",
+      "command": "echo 'iptables-persistent iptables-persistent/autosave_v6 boolean true' | debconf-set-selections"
+    },
+    {
+      "message": "Installing iptables-persistent",
+      "command": "apt-get install iptables-persistent -y"
+    },
+    {
+      "message": "Setting iptables nat rules",
+      "command": "iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE"
+    },
+    {
+      "message": "Enabling netfilter-persistent at boot",
+      "command": "systemctl enable netfilter-persistent"
+    },
+    {
+      "message": "Saving iptables rules using netfilter-persistent",
+      "command": "netfilter-persistent save"
+    },
+    {
+      "message": "Modifying client file cmdline.txt",
+      "command": "echo 'console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=$SERVER_IP:/nfs/$CLIENT_HOSTNAME,vers=4.1,proto=tcp rw ip=dhcp rootwait elevator=deadline ipv6.disable=1' | tee /tftpboot/cmdline.txt"
+    },
+    {
+      "message": "Modifying client file fstab",
+      "command": "echo 'proc\t/proc\tproc\tdefaults\t0\t0\n$SERVER_IP:/tftpboot/boot\tnfs\tdefaults,vers=4.1,proto=tcp\t0\t0' | tee /nfs/$CLIENT_HOSTNAME/etc/fstab"
+    },
+    {
+      "message": "Setting up WIFI on server",
+      "command": "echo 'ctrl_interface=DIR=/var/run/wpa_supplicant\tGROUP=netdev\nupdate_config=1\ncountry=$WIFI_REGION\n\nnetwork={\n\tssid=\"$WIFI_SSID\"\n\tpsk=\"$WIFI_PASSWORD\"\n}' | tee /etc/wpa_supplicant/wpa_supplicant.conf"
+    },
+    {
+      "message": "Unblocking WIFI on server",
+      "command": "rfkill unblock 0"
+    },
+    {
+      "message": "Queuing server shutdown",
+      "command": "shutdown"
+    }
+  ],
+  "version": 1
+}

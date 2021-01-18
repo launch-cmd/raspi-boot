@@ -1,0 +1,2 @@
+[workspace]
+members = ["cmd_lib", "boot_script", "router_script"]

@@ -1,0 +1,93 @@
+{
+    "commands": [
+        {
+            "message": "Updating apt packages",
+            "command": "apt-get update"
+        },
+        {
+            "message": "Installing dnsmasq",
+            "command": "apt-get install dnsmasq -y"
+        },
+        {
+            "message": "Installing hostapd",
+            "command": "apt-get install hostapd -y"
+        },
+        {
+            "message": "Modifying dhcpcd.conf",
+            "command": "echo 'interface wlan0\nstatic ip_address=$AP_IP/24' | tee -a /etc/dhcpcd.conf"
+        },
+        {
+            "message": "Modifying dnsmasq.conf",
+            "command": "echo 'interface=wlan0\ndhcp-range=$DHCP_START_IP,$DHCP_END_IP, $DHCP_SUBNET_MASK,12h' | tee -a /etc/dnsmasq.conf"
+        },
+        {
+            "message": "Enabling dnsmasq at boot",
+            "command": "systemctl enable dnsmasq"
+        },
+        {
+            "message": "Modifying hostapd.conf",
+            "command": "echo 'interface=wlan0\nhw_mode=g\ncountry_code=$WIFI_REGION\nchannel=8\nssid=$WIFI_SSID\nignore_broadcast_ssid=0\nieee80211n=1\nauth_algs=1\nwpa=2\nwpa_passphrase=$WIFI_PASSWORD\nwpa_key_mgmt=WPA-PSK\nrsn_pairwise=CCMP\nmacaddr_acl=0' | tee -a /etc/hostapd/hostapd.conf"
+        },
+        {
+            "message": "Modifying /etc/default/hostapd",
+            "command": "echo 'DAEMON_CONF=\"/etc/hostapd/hostapd.conf\"' | tee -a /etc/default/hostapd"
+        },
+        {
+            "message": "Enabling traffic forwarding",
+            "command": "echo 'net.ipv4.ip_forward = 1' | tee -a /etc/sysctl.conf"
+        },
+        {
+            "message": "Unmasking hostapd",
+            "command": "systemctl unmask hostapd"
+        },
+        {
+            "message": "Enabling hostapd at boot",
+            "command": "systemctl enable hostapd"
+        },
+        {
+            "message": "Modifying wpa_supplicant.conf",
+            "command": "echo 'ctrl_interface=DIR=/var/run/wpa_supplicant\tGROUP=netdev\nupdate_config=1\ncountry=$WIFI_REGION' | tee /etc/wpa_supplicant/wpa_supplicant.conf"
+        },
+        {
+            "message": "Unblocking wifi",
+            "command": "rfkill unblock all"
+        },
+        {
+            "message": "Setting save ipv4 settings install flag for iptables-persistent",
+            "command": "echo 'iptables-persistent iptables-persistent/autosave_v4 boolean true' | debconf-set-selections"
+        },
+        {
+            "message": "Setting save ipv6 settings install flag for iptables-persistent",
+            "command": "echo 'iptables-persistent iptables-persistent/autosave_v6 boolean true' | debconf-set-selections"
+        },
+        {
+            "message": "Installing iptables-persistent",
+            "command": "apt-get install iptables-persistent -y"
+        },
+        {
+            "message": "Setting iptables forward new traffic rule",
+            "command": "iptables -A FORWARD -o wlan0 -i eth0 -m conntrack --ctstate NEW"
+        },
+        {
+            "message": "Setting iptables forward established traffic rule",
+            "command": "iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT"
+        },
+        {
+            "message": "Setting iptables nat rule",
+            "command": "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+        },
+        {
+            "message": "Enabling netfilter-persistent at boot",
+            "command": "systemctl enable netfilter-persistent"
+        },
+        {
+            "message": "Saving iptables rules using netfilter-persistent",
+            "command": "netfilter-persistent save"
+        },
+        {
+            "message": "Queuing client reboot",
+            "command": "shutdown -r 1"
+        }
+    ],
+    "version": 1
+}
